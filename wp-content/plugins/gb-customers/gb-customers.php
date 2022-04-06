@@ -16,9 +16,8 @@ defined( 'ABSPATH' ) or die( '' );
 
 
 //Includes
-require plugin_dir_path( __FILE__ ) . 'includes/admin.php';
-require plugin_dir_path( __FILE__ ) . 'includes/class-customer.php';
-require plugin_dir_path( __FILE__ ) . 'includes/webservice.php';
+require plugin_dir_path( __FILE__ ) . 'classes/customer.php';
+require plugin_dir_path( __FILE__ ) . 'classes/webservice.php';
 
 global $wpdb_db_version;
 $wpdb_db_version = '1.0.0'; 
@@ -47,6 +46,8 @@ function gbc_install()
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
+    //Customers table
+
     $sql = "CREATE TABLE " . $customers . " (
       id_customer int(11) NOT NULL AUTO_INCREMENT,
       name VARCHAR (50) NOT NULL,
@@ -66,6 +67,8 @@ function gbc_install()
       PRIMARY KEY  (id_customer)
     );";
     dbDelta($sql);
+
+    // version
 
     add_option('gbc_db_version', $wpdb_db_version);
 
@@ -100,14 +103,6 @@ function gbc_install()
 register_activation_hook(__FILE__, 'gbc_install');
 
 
-function gbc_install_data()
-{
-    global $wpdb;
-    //$table_name = $wpdb->prefix . 'gbc'; 
-
-}
-register_activation_hook(__FILE__, 'gbc_install_data');
-
 
 function gbc_update_db_check()
 {
@@ -121,17 +116,15 @@ add_action('plugins_loaded', 'gbc_update_db_check');
 
 function gbc_admin_menu()
 {
-    add_menu_page(__('Customers', 'gbc'), __('Customers', 'gbc'), 'activate_plugins', 'customers', 'gbc_customers_list_page');
-    add_submenu_page('customers',' ' , ' ', 'activate_plugins', 'customer_view', 'gbc_customer_view_page');
-    add_submenu_page('customers', __('Add new', 'gbc'), __('Add new', 'gbc'), 'activate_plugins', 'customer_form', 'gbc_customer_form_page');
-    add_submenu_page('customers', __('Webservice', 'gbc'), __('Presta Webservice', 'gbc'), 'activate_plugins', 'webservice', 'gbc_configuration_page');  
+    add_menu_page(__('Customers', 'gbc'), __('Customers', 'gbc'), 'activate_plugins', 'customers', 'gbc_customers');
+    add_submenu_page('customers',' ' , ' ', 'activate_plugins', 'customer', 'gbc_customer');
+    add_submenu_page('customers', __('Add new', 'gbc'), __('Add new', 'gbc'), 'activate_plugins', 'customer_form', 'gbc_customer_form');
+    add_submenu_page('customers', __('Webservice', 'gbc'), __('Webservice', 'gbc'), 'activate_plugins', 'webservice', 'gbc_configuration');  
 }
 add_action('admin_menu', 'gbc_admin_menu');
 
-//Registra una configuración y su retrollamada de limpieza (sanitization).
-//register_setting( $grupo_de_opciones, $nombre_de_opcion, $retrollamada_de_limpieza );
 function gbc_settings(){		
-    register_setting('gbc-config-group', 'gbc_options', 'gbc_sanitize');		
+    register_setting('gbc_config_group', 'gbc_options', 'gbc_sanitize');		
 }
 add_action('admin_init', 'gbc_settings');
 
