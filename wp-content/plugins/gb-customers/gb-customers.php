@@ -37,6 +37,14 @@ function gbc_plugin_load_textdomain() {
 add_action( 'plugins_loaded', 'gbc_plugin_load_textdomain' );
 
 
+//Check if WooCommerce is activated
+if ( ! function_exists( 'is_woocommerce_activated' ) ) {
+    function is_woocommerce_activated() {
+        if ( class_exists( 'woocommerce' ) ) { return true; } else { return false; }
+    }
+}
+
+
 function gbc_install()
 {
     global $wpdb;
