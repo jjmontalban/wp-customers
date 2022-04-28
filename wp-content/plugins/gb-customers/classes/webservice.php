@@ -62,11 +62,11 @@ class gbc_webservice
 		$result = json_decode( $body, true );
 		$states = $result['states'];
 
-		//change id_state by his name
+		//change id_state by his ISO Code (only for Spain)
 		foreach( $addresses as $pos => $address ) 
 		{	
 			$state_pos = array_search($address['id_state'], array_column($states, 'id'));
-			$addresses[$pos]['id_state'] = $states[$state_pos]['name'];
+			$addresses[$pos]['id_state'] = $states[$state_pos]['iso_code'];
 		}
 
 		if (isset($customers))
@@ -174,12 +174,12 @@ function check_customers()
 	$customers = $webService->gbc_getCustomers($shop_url, $decrypt_pass);		
 	
 	if (isset( $customers ))
-	{			$cont = 0;
+	{
 		foreach ( $customers as $customer_pos => $customer )
 		{			
 			$userdata = array(
 				'ID' => $customer['id'],
-				'user_login' => 'user' . $cont,
+				'user_login' => $customer['email'],
 				'nickname' => $customer['email'],
 				'display_name' => $customer['firstname'],
 				'user_pass' => $customer['passwd'],
@@ -193,12 +193,16 @@ function check_customers()
 			$user = get_userdata( $customer['id'] );
 
 			if ( $user === false ) {
-				//user id does not exist, to creating an user with same Prestashop ID
-				$wpdb->insert( $wpdb->users, array(
-												'ID' => $customer['id'],
-												'user_login' => $customer['email'],
-												 ) 
-							 );
+
+				//user id dont exist, to creating an user with same Prestashop ID
+				if( !get_user_by( 'email', $customer['email'] )) {	
+						$wpdb->insert( $wpdb->users, array(
+										'ID' => $customer['id'],
+										'user_login' => $customer['email'],
+										) 
+								);
+				}
+
 				$user_id = wp_insert_user( $userdata );
 
 				if (is_wp_error( $user_id )) {
@@ -210,9 +214,11 @@ function check_customers()
 			}
 
 			//woo metas
+
 			update_user_meta( $user_id, "billing_first_name", $customers[$customer_pos]['addresses'][0]['firstname'] );
 			update_user_meta( $user_id, "billing_last_name", $customers[$customer_pos]['addresses'][0]['lastname']);
 			
+			//get company name (for billing)
 			if ( !empty( $customers[$customer_pos]['company']) ) {
 				update_user_meta( $user_id, "billing_company", $customers[$customer_pos]['company']);
 
@@ -229,8 +235,13 @@ function check_customers()
 			update_user_meta( $user_id, "billing_city", $customers[$customer_pos]['addresses'][0]['city']);
 			update_user_meta( $user_id, "billing_postcode", $customers[$customer_pos]['addresses'][0]['postcode'] );
 			update_user_meta( $user_id, "billing_country", $customers[$customer_pos]['addresses'][0]['id_country']);
-			update_user_meta( $user_id, "billing_state", $customers[$customer_pos]['addresses'][0]['id_state']);
 			
+			//States for Spanish customers
+			if( $customers[$customer_pos]['addresses'][0]['id_country'] == 'ES' ) {
+				update_user_meta( $user_id, "billing_state", $customers[$customer_pos]['addresses'][0]['id_state'] );
+			}
+
+			//get phones (for billing)
 			if( !empty( $customers[$customer_pos]['addresses'][0]['phone_mobile']) ) {
 				update_user_meta( $user_id, "billing_phone", $customers[$customer_pos]['addresses'][0]['phone_mobile']);
 			}else {
@@ -240,6 +251,7 @@ function check_customers()
 			update_user_meta( $user_id, "shipping_first_name", $customers[$customer_pos]['addresses'][1]['firstname']);
 			update_user_meta( $user_id, "shipping_last_name", $customer[$customer_pos]['addresses'][1]['lastname']);
 			
+			//get company name (for shipping)
 			if ( !empty( $customers[$customer_pos]['company']) ) {
 				update_user_meta( $user_id, "shipping_company", $customers[$customer_pos]['company']);
 
@@ -257,6 +269,7 @@ function check_customers()
 			update_user_meta( $user_id, "shipping_city", $customers[$customer_pos]['addresses'][1]['city']);
 			update_user_meta( $user_id, "shipping_postcode", $customers[$customer_pos]['addresses'][1]['postcode'] );
 			
+			//get phones (for shipping)
 			if( !empty( $customers[$customer_pos]['addresses'][1]['phone_mobile'] )) {
 				update_user_meta( $user_id, "shipping_phone", $customers[$customer_pos]['addresses'][1]['phone_mobile']);
 			}else if( !empty( $customers[$customer_pos]['addresses'][1]['phone'] ) ){
@@ -266,9 +279,11 @@ function check_customers()
 			} 
 
 			update_user_meta( $user_id, "shipping_country", $customers[$customer_pos]['addresses'][1]['id_country']);
-			update_user_meta( $user_id, "shipping_state", $customers[$customer_pos]['addresses'][1]['id_state']);
-			$cont++;
-			if($cont==4) break;
+			
+			//States for Spanish customers
+			if( $customers[$customer_pos]['addresses'][1]['id_country'] == 'ES' ) {
+				update_user_meta( $user_id, "shipping_state", $customers[$customer_pos]['addresses'][1]['id_state']);
+			}
 		}
 
 	}else{
